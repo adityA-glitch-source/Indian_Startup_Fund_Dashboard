@@ -8,90 +8,90 @@ The project uses the dataset indian startup funding, which contains details of I
 🚀 Features
 1. Company POV (In Progress 🚧)
 
-Explore insights about a selected startup:
+ Explore insights about a selected startup:
 
-Company Name
+ Company Name
 
-Founders
+ Founders
 
-Industry & Subindustry
+ Industry & Subindustry
 
-Location
+ Location
 
-Funding Rounds & Stages
+ Funding Rounds & Stages
 
-Investors
+ Investors
 
-Date of funding
+ Date of funding
 
-Similar Companies
+ Similar Companies
 
 ⚠️ This section is under development and not fully functional yet.
 
 2. Investor POV
 
-Understand an investor’s funding patterns:
+ Understand an investor’s funding patterns:
 
-Name & Recent Investments
+ Name & Recent Investments
 
-Biggest Investments
+ Biggest Investments
 
-General Investment Behavior:
+ General Investment Behavior:
 
-Sector distribution → Pie Chart
+ Sector distribution → Pie Chart
 
-Stage-wise investments → Pie Chart
+ Stage-wise investments → Pie Chart
 
-City-wise investments → Pie Chart
+ City-wise investments → Pie Chart
 
-YoY Investment Graph → Total investments over the years
+ YoY Investment Graph → Total investments over the years
 
 3. General Analysis
 
-High-level overview of the startup funding ecosystem:
+ High-level overview of the startup funding ecosystem:
 
-MoM Funding Trend → Total + Count of deals
+ MoM Funding Trend → Total + Count of deals
 
-Summary Cards → Total Funding, Maximum Funding, Average Funding, Total Startups Funded
+ Summary Cards → Total Funding, Maximum Funding, Average Funding, Total Startups Funded
 
-Sector Analysis → Pie Charts showing top sectors (by Count + Sum)
+ Sector Analysis → Pie Charts showing top sectors (by Count + Sum)
 
-Type of Funding → Equity, Debt, Seed, etc.
+ Type of Funding → Equity, Debt, Seed, etc.
 
-City-wise Funding → Distribution across major cities
+ City-wise Funding → Distribution across major cities
 
-Top Startups → Year-wise and Overall
+ Top Startups → Year-wise and Overall
 
-Top Investors → Key players in the ecosystem
+ Top Investors → Key players in the ecosystem
 
-Funding Heatmap → Month-Year wise visualization of funding
+ Funding Heatmap → Month-Year wise visualization of funding
 
 📊 Dataset
 
-indian startup funding dataset includes:
+ indian startup funding dataset includes:
 
-Company Name
+ Company Name
 
-Founders
+ Founders
 
-Industry / Subindustry
+ Industry / Subindustry
 
-Location
+ Location
 
-Investors
+ Investors
 
-Funding Rounds & Stages
+ Funding Rounds & Stages
 
-Investment Date
+ Investment Date
 
-Funding Amount
+ Funding Amount
 
 🛠️ Tech Stack
 
-Python 3
+ Python 3
 
-Streamlit – Interactive web app framework
+ Streamlit – Interactive web app framework
 
-Pandas / Numpy – Data wrangling & analysis
+ Pandas / Numpy – Data wrangling & analysis
 
-Matplotlib / Seaborn / Plotly – Visualizations
+ Matplotlib / Seaborn / Plotly – Visualizations
