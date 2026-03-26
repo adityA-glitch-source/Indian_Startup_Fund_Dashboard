@@ -2,67 +2,129 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-st.set_page_config(layout='wide', page_title='Startup Funding Dashboard')
+st.set_page_config(layout='wide', page_title='Indian Startup Funding Dashboard')
 
 # ---------------------- LOAD DATA ----------------------
 @st.cache_data
 def load_data():
     df = pd.read_csv('startup_cleaned.csv')
 
-    # Cleaning
+    # ---------------- DATE CLEANING ----------------
     df['date'] = pd.to_datetime(df['date'], errors='coerce')
     df['year'] = df['date'].dt.year
     df['month'] = df['date'].dt.month
 
+    # ---------------- AMOUNT CLEANING ----------------
     df['amount'] = pd.to_numeric(df['amount'], errors='coerce')
     df = df.dropna(subset=['amount'])
 
+    # ---------------- CITY CLEANING ----------------
+    valid_cities = [
+        'bangalore','bengaluru','mumbai','delhi','new delhi',
+        'gurgaon','gurugram','hyderabad','pune','chennai',
+        'kolkata','bhubaneswar','bhubneswar','andheri'
+    ]
+
+    def extract_city(x):
+        x = str(x).lower()
+        parts = x.replace(',', '/').split('/')
+        for part in parts:
+            part = part.strip()
+            if part in valid_cities:
+                return part
+        return None
+
+    df['city'] = df['city'].apply(extract_city)
+
+    city_map = {
+        'bengaluru': 'Bangalore',
+        'bangalore': 'Bangalore',
+        'new delhi': 'Delhi',
+        'delhi': 'Delhi',
+        'gurgaon': 'Gurgaon',
+        'gurugram': 'Gurgaon',
+        'bhubneswar': 'Bhubaneswar',
+        'bhubaneswar': 'Bhubaneswar',
+        'andheri': 'Mumbai'
+    }
+
+    df['city'] = df['city'].replace(city_map)
+    df = df.dropna(subset=['city'])
+    df['city'] = df['city'].str.title()
+
+    # ---------------- SECTOR CLEANING ----------------
+    df['vertical'] = df['vertical'].astype(str).str.lower().str.strip()
+
+    sector_map = {
+        'fintech': 'FinTech', 'finance': 'FinTech', 'financial services': 'FinTech',
+        'edtech': 'EdTech', 'education': 'EdTech', 'e-learning': 'EdTech',
+        'ecommerce': 'E-commerce', 'e-commerce': 'E-commerce', 'online retail': 'E-commerce',
+        'healthtech': 'HealthTech', 'healthcare': 'HealthTech',
+        'ai': 'AI', 'artificial intelligence': 'AI', 'machine learning': 'AI',
+        'saas': 'SaaS', 'software': 'SaaS',
+        'logistics': 'Logistics', 'supply chain': 'Logistics',
+        'food': 'Food', 'food delivery': 'Food',
+        'gaming': 'Gaming', 'agritech': 'AgriTech'
+    }
+
+    df['vertical'] = df['vertical'].replace(sector_map)
+    df['vertical'] = df['vertical'].replace(['unknown', 'nan', ''], 'Other')
+
+    top_sectors = df['vertical'].value_counts().head(10).index
+    df['vertical'] = df['vertical'].apply(lambda x: x if x in top_sectors else 'Other')
+
+    # ---------------- INVESTOR CLEANING ----------------
     df['investors'] = df['investors'].fillna("")
     df['investor_list'] = df['investors'].apply(lambda x: [i.strip() for i in x.split(',')])
 
     return df
 
 df = load_data()
-
-# Exploded investor dataframe
 investor_df = df.explode('investor_list')
 
 # ---------------------- HELPER ----------------------
 def format_cr(x):
     return f"₹{round(x,2)} Cr"
 
-# ---------------------- SIDEBAR ----------------------
-st.sidebar.title("🔍 Filters")
+primary_color = "#2E86C1"
 
+# ---------------------- SIDEBAR ----------------------
+st.sidebar.markdown("## 🔍 Filters")
 year_filter = st.sidebar.multiselect("Year", sorted(df['year'].dropna().unique()))
 city_filter = st.sidebar.multiselect("City", sorted(df['city'].dropna().unique()))
 sector_filter = st.sidebar.multiselect("Sector", sorted(df['vertical'].dropna().unique()))
 
 view = st.sidebar.radio("Select View", ["Overview", "Startup", "Investor"])
 
-# Apply filters
 filtered_df = df.copy()
 
 if year_filter:
     filtered_df = filtered_df[filtered_df['year'].isin(year_filter)]
-
 if city_filter:
     filtered_df = filtered_df[filtered_df['city'].isin(city_filter)]
-
 if sector_filter:
     filtered_df = filtered_df[filtered_df['vertical'].isin(sector_filter)]
 
 filtered_investor_df = filtered_df.explode('investor_list')
 
+if filtered_df.empty:
+    st.warning("No data available for selected filters")
+    st.stop()
+
+# ---------------------- HEADER ----------------------
+st.markdown("""
+<h1 style='text-align:center; color:#2E86C1;'>🇮🇳 Indian Startup Funding Dashboard</h1>
+<p style='text-align:center;'>Analyze funding trends, sectors, and investor activity</p>
+""", unsafe_allow_html=True)
+
 # ---------------------- OVERVIEW ----------------------
 def show_overview():
-    st.title("📊 Indian Startup Funding Dashboard")
-
     total = filtered_df['amount'].sum()
     max_funding = filtered_df.groupby('startup')['amount'].max().max()
     avg_funding = filtered_df.groupby('startup')['amount'].sum().mean()
     startups = filtered_df['startup'].nunique()
 
+    st.markdown("### 📊 Key Metrics")
     col1, col2, col3, col4 = st.columns(4)
 
     col1.metric("Total Funding", format_cr(total))
@@ -72,109 +134,88 @@ def show_overview():
 
     st.divider()
 
-    tab1, tab2, tab3 = st.tabs(["📈 Trends", "🏭 Sectors", "🏙️ Cities"])
+    # Trends
+    st.markdown("## 📈 Trends Analysis")
+    trend = filtered_df.groupby(['year','month'])['amount'].sum().reset_index()
+    trend['date'] = pd.to_datetime(trend[['year','month']].assign(day=1))
 
-    # -------- Trends --------
-    with tab1:
-        trend = filtered_df.groupby(['year', 'month'])['amount'].sum().reset_index()
-        trend['date'] = pd.to_datetime(trend[['year','month']].assign(day=1))
-
-        fig = px.line(trend, x='date', y='amount', markers=True, title="Funding Trend")
-        st.plotly_chart(fig, use_container_width=True)
-
-    # -------- Sector --------
-    with tab2:
-        sector = filtered_df.groupby('vertical')['amount'].sum().sort_values(ascending=False).head(10)
-
-        fig = px.bar(
-            x=sector.index,
-            y=sector.values,
-            color=sector.index,
-            title="Top Sectors"
-        )
-        st.plotly_chart(fig, use_container_width=True)
-
-    # -------- City --------
-    with tab3:
-        city = filtered_df.groupby('city')['amount'].sum().sort_values(ascending=False).head(10)
-
-        fig = px.bar(
-            x=city.index,
-            y=city.values,
-            color=city.index,
-            title="Top Cities"
-        )
-        st.plotly_chart(fig, use_container_width=True)
-
-    st.divider()
-
-    # -------- Investor Panel --------
-    st.subheader("🏆 Top Investors")
-
-    top_inv = filtered_investor_df.groupby('investor_list')['amount'].sum().sort_values(ascending=False).head(10)
-
-    fig = px.bar(x=top_inv.index, y=top_inv.values)
+    fig = px.line(trend, x='date', y='amount', markers=True)
     st.plotly_chart(fig, use_container_width=True)
 
-    st.divider()
+    # Sector
+    st.markdown("## 🏭 Sector Insights")
+    sector = filtered_df.groupby('vertical')['amount'].sum().reset_index()
+    fig2 = px.bar(sector, x='vertical', y='amount', color='vertical',
+                  color_discrete_sequence=[primary_color])
+    st.plotly_chart(fig2, use_container_width=True)
 
-    # -------- Insights --------
-    st.subheader("🧠 Key Insights")
+    # City
+    st.markdown("## 🏙️ Geographic Insights")
+    city = filtered_df.groupby('city')['amount'].sum().reset_index()
+    fig3 = px.bar(city, x='city', y='amount', color='city')
+    st.plotly_chart(fig3, use_container_width=True)
 
-    top_sector = filtered_df.groupby('vertical')['amount'].sum().idxmax()
-    top_city = filtered_df.groupby('city')['amount'].sum().idxmax()
-    top_investor = filtered_investor_df.groupby('investor_list')['amount'].sum().idxmax()
+    # Map
+    st.markdown("## 🗺️ India Funding Map")
+    city_coords = {
+        'Bangalore': (12.9716,77.5946),'Mumbai': (19.0760,72.8777),
+        'Delhi': (28.6139,77.2090),'Gurgaon': (28.4595,77.0266),
+        'Hyderabad': (17.3850,78.4867),'Pune': (18.5204,73.8567),
+        'Chennai': (13.0827,80.2707),'Kolkata': (22.5726,88.3639),
+        'Bhubaneswar': (20.2961,85.8245)
+    }
 
-    st.write(f"📊 Top sector: **{top_sector}**")
-    st.write(f"🏙️ Top city: **{top_city}**")
-    st.write(f"💰 Most active investor: **{top_investor}**")
+    map_df = city.copy()
+    map_df['lat'] = map_df['city'].apply(lambda x: city_coords.get(x,(None,None))[0])
+    map_df['lon'] = map_df['city'].apply(lambda x: city_coords.get(x,(None,None))[1])
+    map_df = map_df.dropna()
 
+    fig4 = px.scatter_mapbox(map_df, lat='lat', lon='lon', size='amount',
+                            hover_name='city', zoom=4,
+                            mapbox_style='carto-positron')
+    st.plotly_chart(fig4, use_container_width=True)
+
+    # Investors
+    st.markdown("## 🏆 Top Investors")
+    top_inv = filtered_investor_df.groupby('investor_list')['amount'].sum().reset_index().sort_values(by='amount',ascending=False).head(10)
+    fig5 = px.bar(top_inv, x='investor_list', y='amount')
+    st.plotly_chart(fig5, use_container_width=True)
+
+    # Insights
+    st.markdown("## 🧠 Key Insights")
+    st.write(f"Top Sector: {sector.sort_values(by='amount',ascending=False).iloc[0]['vertical']}")
+    st.write(f"Top City: {city.sort_values(by='amount',ascending=False).iloc[0]['city']}")
 
 # ---------------------- STARTUP ----------------------
 def show_startup():
     st.title("🏢 Startup Analysis")
-
     startup = st.selectbox("Select Startup", sorted(filtered_df['startup'].unique()))
+    data = filtered_df[filtered_df['startup']==startup]
 
-    startup_df = filtered_df[filtered_df['startup'] == startup]
+    st.dataframe(data)
 
-    st.subheader("Funding History")
-    st.dataframe(startup_df)
-
-    yearly = startup_df.groupby('year')['amount'].sum().reset_index()
-
-    fig = px.line(yearly, x='year', y='amount', markers=True, title="Yearly Funding")
+    yearly = data.groupby('year')['amount'].sum().reset_index()
+    fig = px.line(yearly, x='year', y='amount', markers=True)
     st.plotly_chart(fig, use_container_width=True)
-
 
 # ---------------------- INVESTOR ----------------------
 def show_investor():
     st.title("💰 Investor Analysis")
 
-    investors = sorted(set(filtered_investor_df['investor_list'].dropna()))
+    investors = sorted([i for i in filtered_investor_df['investor_list'].dropna() if i!=""])
     investor = st.selectbox("Select Investor", investors)
 
-    inv_df = filtered_investor_df[filtered_investor_df['investor_list'] == investor]
+    inv_df = filtered_investor_df[filtered_investor_df['investor_list']==investor]
 
-    st.subheader("Recent Investments")
-    st.dataframe(inv_df[['date','startup','vertical','city','amount']].head())
+    st.dataframe(inv_df.head())
 
-    col1, col2 = st.columns(2)
+    top = inv_df.groupby('startup')['amount'].sum().reset_index().sort_values(by='amount',ascending=False).head(10)
+    fig = px.bar(top, x='startup', y='amount')
+    st.plotly_chart(fig, use_container_width=True)
 
-    with col1:
-        top = inv_df.groupby('startup')['amount'].sum().sort_values(ascending=False).head(10)
-        fig = px.bar(x=top.index, y=top.values, title="Top Investments")
-        st.plotly_chart(fig, use_container_width=True)
-
-    with col2:
-        sector = inv_df.groupby('vertical')['amount'].sum()
-        fig2 = px.pie(values=sector.values, names=sector.index, title="Sector Distribution")
-        st.plotly_chart(fig2)
-
-    yearly = inv_df.groupby('year')['amount'].sum().reset_index()
-    fig3 = px.line(yearly, x='year', y='amount', markers=True, title="Yearly Investment Trend")
-    st.plotly_chart(fig3, use_container_width=True)
-
+    sector = inv_df.groupby('vertical')['amount'].sum().reset_index()
+    fig2 = px.pie(sector, values='amount', names='vertical')
+    st.plotly_chart(fig2)
 
 # ---------------------- MAIN ----------------------
 if view == "Overview":
@@ -183,3 +224,7 @@ elif view == "Startup":
     show_startup()
 else:
     show_investor()
+
+# ---------------------- FOOTER ----------------------
+st.markdown("---")
+st.markdown("<p style='text-align:center;'>Built by Aditya Singh</p>", unsafe_allow_html=True)
