@@ -1,103 +1,189 @@
-Indian Startup Fund Dashboard
+# 🇮🇳 Indian Startup Funding Dashboard
 
-An interactive Streamlit dashboard built to analyze the Indian Startup Funding ecosystem.
-This app provides insights from both investor and startup perspectives, along with overall funding trends and sector-level analysis.
+An interactive **Streamlit-based analytics dashboard** designed to explore and analyze the Indian startup funding ecosystem.
 
-The project uses the dataset Indian Startup Funding, which contains details of Indian startups, investors, funding rounds, industries, and more.
+This project transforms raw, inconsistent funding data into **clean, structured, and actionable insights** using data cleaning, feature engineering, and interactive visualizations.
 
-🌐 Live Demo
+---
+
+## 🌐 Live Demo
 
 🔗 https://indianstartupfunddashboard-cuagchwcqwec4b2xz9wtoo.streamlit.app/
 
+---
 
+## 🚀 Key Features
 
-🚀 Features
-1. Company POV (In Progress 🚧)
+### 📊 1. Overview Dashboard
 
-Explore insights about a selected startup:
+A comprehensive snapshot of the startup ecosystem:
 
-Company Name
+* **Key Metrics (KPIs)**
 
-Founders
+  * Total Funding
+  * Maximum Funding
+  * Average Funding
+  * Total Startups Funded
 
-Industry & Subindustry
+* **Funding Trends**
 
-Location
+  * Month-over-Month (MoM) funding trend
+  * Time-series visualization
 
-Funding Rounds & Stages
+* **Sector Analysis**
 
-Investors
+  * Top sectors by funding
+  * Cleaned and standardized categories
 
-Date of funding
+* **Geographic Insights**
 
-Similar Companies
+  * City-wise funding distribution
+  * **Interactive India Map Visualization** (funding hotspots)
 
-⚠️ This section is under development and not fully functional yet.
+* **Top Investors**
 
-2. Investor POV
+  * Ranked based on total investment
 
-Understand an investor’s funding patterns:
+---
 
-Name & Recent Investments
+### 🏢 2. Startup Analysis
 
-Biggest Investments
+Explore detailed insights for individual startups:
 
-General Investment Behavior:
+* Funding history over time
+* Year-wise funding trends
+* Structured and cleaned startup data
 
-Sector distribution → Pie Chart
+---
 
-Stage-wise investments → Pie Chart
+### 💰 3. Investor Analysis
 
-City-wise investments → Pie Chart
+Understand investor behavior and patterns:
 
-YoY Investment Graph → Total investments over the years
+* Recent investments
+* Top startups funded
+* Sector-wise investment distribution
+* Investment trends over time
 
-3. General Analysis
+---
 
-High-level overview of the startup funding ecosystem:
+## 🧠 Data Engineering Highlights
 
-MoM Funding Trend → Total + Count of deals
+This project goes beyond visualization and focuses heavily on **real-world data cleaning challenges**:
 
-Summary Cards → Total Funding, Maximum Funding, Average Funding, Total Startups Funded
+### ✅ City Normalization
 
-Sector Analysis → Pie Charts showing top sectors (by Count + Sum)
+* Resolved inconsistent entries like:
 
-Type of Funding → Equity, Debt, Seed, etc.
+  * `Bangalore / SFO` → Bangalore
+  * `New York, Bengaluru` → Bangalore
+* Removed non-Indian locations
 
-City-wise Funding → Distribution across major cities
+---
 
-Top Startups → Year-wise and Overall
+### ✅ Sector Standardization
 
-Top Investors → Key players in the ecosystem
+* Unified categories:
 
-Funding Heatmap → Month-Year wise visualization of funding
+  * `fintech`, `finance`, `financial services` → **FinTech**
+* Reduced noise by grouping smaller categories into **"Other"**
 
-📊 Dataset
+---
 
-Indian Startup Funding dataset includes:
+### ✅ Startup Name Cleaning
 
-Company Name
+* Fixed inconsistencies:
 
-Founders
+  * `Byju///`, `BYJU’S`, `byjus` → **Byju’s**
+  * `Ola Cabs`, `OLA` → **Ola**
 
-Industry / Subindustry
+---
 
-Location
+### ✅ Investor Entity Resolution (Advanced)
 
-Investors
+* Consolidated variations:
 
-Funding Rounds & Stages
+  * `Sequoia Capital India` → **Sequoia**
+  * `Lightspeed India`, `Lightspeed Ventures` → **Lightspeed**
+  * `Aarin Capital Partners`, `Aarin Capital Others` → **Aarin Capital**
 
-Investment Date
+* Removed noise:
 
-Funding Amount
+  * `Undisclosed HNIs`, invalid entries
 
-🛠️ Tech Stack
+* Handled multi-investor fields using:
 
-Python 3
+  * **String parsing + explosion + deduplication**
 
-Streamlit – Interactive web app framework
+---
 
-Pandas / Numpy – Data wrangling & analysis
+## 📊 Dataset
 
-Matplotlib / Seaborn / Plotly – Visualizations
+The dataset includes:
+
+* Startup Name
+* Founders
+* Industry / Sector
+* City / Location
+* Investors
+* Funding Rounds & Stage
+* Investment Date
+* Funding Amount
+
+---
+
+## 🛠️ Tech Stack
+
+* **Python 3**
+* **Streamlit** – Interactive dashboard framework
+* **Pandas & NumPy** – Data cleaning and transformation
+* **Plotly** – Interactive visualizations
+* **Matplotlib (initial version)**
+
+---
+
+## ⚙️ Key Functionalities
+
+* Dynamic filtering (Year, City, Sector)
+* Interactive charts and graphs
+* Map-based visualization
+* Clean dropdowns (no duplicates)
+* Error handling for empty selections
+* Optimized performance using caching
+
+---
+
+## 📈 Project Impact
+
+* Improved data reliability through cleaning & normalization
+* Reduced noise and duplication in key entities
+* Enabled better decision-making through structured insights
+* Built a **production-level analytics dashboard**
+
+---
+
+## 🧑‍💻 Author
+
+**Aditya Kumar**
+
+---
+
+## ⭐ Conclusion
+
+This project demonstrates:
+
+* End-to-end **data analysis pipeline**
+* Real-world **data cleaning & preprocessing**
+* Interactive **dashboard development**
+* Strong focus on **user experience and data accuracy**
+
+---
+
+## 🚀 Future Improvements
+
+* Advanced filtering (funding stage, investor type)
+* Real-time API integration
+* Predictive analytics (future funding trends)
+* Enhanced UI/UX design
+
+---
