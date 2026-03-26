@@ -227,4 +227,4 @@ else:
 
 # ---------------------- FOOTER ----------------------
 st.markdown("---")
-st.markdown("<p style='text-align:center;'>Built by Aditya Singh</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align:center;'>Built by Aditya Kumar</p>", unsafe_allow_html=True)
