@@ -5,14 +5,14 @@ import re
 
 st.set_page_config(layout='wide', page_title='Indian Startup Funding Dashboard')
 
-# ---------------------- HELPERS ----------------------
+# ---------------------- NORMALIZATION ----------------------
 def normalize_text(x):
     x = str(x).lower()
     x = re.sub(r'[^a-z0-9\s]', '', x)
 
     noise_words = [
-        'partners','capital','ventures','investments',
-        'fund','technology','opportunities','others','and'
+        'partners','capital','ventures','investments','fund',
+        'technology','opportunities','others','and','through','crowd','ing'
     ]
 
     for word in noise_words:
@@ -29,16 +29,16 @@ def format_cr(x):
 def load_data():
     df = pd.read_csv('startup_cleaned.csv')
 
-    # -------- DATE --------
+    # DATE
     df['date'] = pd.to_datetime(df['date'], errors='coerce')
     df['year'] = df['date'].dt.year
     df['month'] = df['date'].dt.month
 
-    # -------- AMOUNT --------
+    # AMOUNT
     df['amount'] = pd.to_numeric(df['amount'], errors='coerce')
     df = df.dropna(subset=['amount'])
 
-    # -------- CITY CLEANING --------
+    # ---------------- CITY ----------------
     valid_cities = [
         'bangalore','bengaluru','mumbai','delhi','new delhi',
         'gurgaon','gurugram','hyderabad','pune','chennai',
@@ -67,7 +67,7 @@ def load_data():
     df = df.dropna(subset=['city'])
     df['city'] = df['city'].str.title()
 
-    # -------- SECTOR CLEANING --------
+    # ---------------- SECTOR ----------------
     df['vertical'] = df['vertical'].apply(normalize_text)
 
     sector_map = {
@@ -89,12 +89,11 @@ def load_data():
     top_sectors = df['vertical'].value_counts().head(10).index
     df['vertical'] = df['vertical'].apply(lambda x: x if x in top_sectors else 'Other')
 
-    # -------- STARTUP CLEANING --------
+    # ---------------- STARTUP ----------------
     df['startup'] = df['startup'].apply(normalize_text)
 
     startup_map = {
         'ola': 'Ola',
-        'ola cabs': 'Ola',
         'flipkart': 'Flipkart',
         'paytm': 'Paytm',
         'byju': 'Byju’s',
@@ -109,7 +108,7 @@ def load_data():
 
     df['startup'] = df['startup'].apply(clean_startup)
 
-    # -------- INVESTOR CLEANING (FINAL) --------
+    # ---------------- INVESTORS ----------------
     df['investors'] = df['investors'].fillna("")
 
     def clean_investors(x):
@@ -117,33 +116,83 @@ def load_data():
         cleaned = []
 
         for inv in investors:
-            inv_clean = normalize_text(inv)
+            inv = normalize_text(inv)
 
-            # ---- ENTITY GROUPING ----
-            if '500 startups' in inv_clean:
-                cleaned.append('500 Startups')
-            elif '3one4' in inv_clean:
+            # REMOVE JUNK
+            if inv in ['', 'br']:
+                continue
+            if 'undisclosed' in inv or 'hni' in inv:
+                continue
+
+            # ENTITY GROUPING
+            elif '1crowd' in inv:
+                cleaned.append('1Crowd')
+
+            elif '3one4' in inv:
                 cleaned.append('3One4 Capital')
-            elif 'aarin' in inv_clean:
-                cleaned.append('Aarin Capital')
-            elif 'ah' in inv_clean:
-                cleaned.append('Ah Ventures')
-            elif 'sequoia' in inv_clean:
-                cleaned.append('Sequoia')
-            elif 'accel' in inv_clean:
+
+            elif '500' in inv:
+                cleaned.append('500 Startups')
+
+            elif 'accel' in inv:
                 cleaned.append('Accel')
-            elif 'softbank' in inv_clean:
-                cleaned.append('SoftBank')
-            elif 'tiger global' in inv_clean:
-                cleaned.append('Tiger Global')
-            elif 'matrix' in inv_clean:
+
+            elif 'ah' in inv:
+                cleaned.append('Ah Ventures')
+
+            elif 'bessemer' in inv:
+                cleaned.append('Bessemer Venture Partners')
+
+            elif 'blume' in inv:
+                cleaned.append('Blume Ventures')
+
+            elif 'beenext' in inv:
+                cleaned.append('Beenext')
+
+            elif 'beenos' in inv:
+                cleaned.append('Beenos')
+
+            elif 'matrix' in inv:
                 cleaned.append('Matrix')
-            elif 'zodius' in inv_clean:
+
+            elif 'lightspeed' in inv:
+                cleaned.append('Lightspeed')
+
+            elif 'kalaari' in inv:
+                cleaned.append('Kalaari Capital')
+
+            elif 'idg' in inv:
+                cleaned.append('IDG Ventures')
+
+            elif 'helion' in inv:
+                cleaned.append('Helion Venture Partners')
+
+            elif 'growx' in inv:
+                cleaned.append('GrowX Ventures')
+
+            elif 'letsventure' in inv:
+                cleaned.append('LetsVenture')
+
+            elif 'aarin' in inv:
+                cleaned.append('Aarin Capital')
+
+            elif 'zodius' in inv:
                 cleaned.append('Zodius')
-            elif 'zishaan hayath' in inv_clean:
+
+            elif 'zishaan hayath' in inv:
                 cleaned.append('Zishaan Hayath')
-            elif inv_clean != "":
-                cleaned.append(inv_clean.title())
+
+            elif 'binny bansal' in inv:
+                cleaned.append('Binny Bansal')
+
+            elif 'american express' in inv:
+                cleaned.append('American Express')
+
+            elif 'anupam mittal' in inv:
+                cleaned.append('Anupam Mittal')
+
+            elif inv != "":
+                cleaned.append(inv.title())
 
         return list(set(cleaned))
 
@@ -189,77 +238,42 @@ st.markdown("""
 # ---------------------- OVERVIEW ----------------------
 def show_overview():
     total = filtered_df['amount'].sum()
-    max_funding = filtered_df.groupby('startup')['amount'].max().max()
-    avg_funding = filtered_df.groupby('startup')['amount'].sum().mean()
     startups = filtered_df['startup'].nunique()
 
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2 = st.columns(2)
     col1.metric("Total Funding", format_cr(total))
-    col2.metric("Max Funding", format_cr(max_funding))
-    col3.metric("Avg Funding", format_cr(avg_funding))
-    col4.metric("Startups", startups)
+    col2.metric("Startups", startups)
 
-    st.divider()
-
-    # Trend
     trend = filtered_df.groupby(['year','month'])['amount'].sum().reset_index()
     trend['date'] = pd.to_datetime(trend[['year','month']].assign(day=1))
-    st.plotly_chart(px.line(trend, x='date', y='amount', markers=True), use_container_width=True)
+    st.plotly_chart(px.line(trend, x='date', y='amount'), use_container_width=True)
 
-    # Sector
     sector = filtered_df.groupby('vertical')['amount'].sum().reset_index()
     st.plotly_chart(px.bar(sector, x='vertical', y='amount'), use_container_width=True)
 
-    # City
     city = filtered_df.groupby('city')['amount'].sum().reset_index()
     st.plotly_chart(px.bar(city, x='city', y='amount'), use_container_width=True)
 
-    # Map
-    city_coords = {
-        'Bangalore': (12.9716,77.5946),'Mumbai': (19.0760,72.8777),
-        'Delhi': (28.6139,77.2090),'Gurgaon': (28.4595,77.0266),
-        'Hyderabad': (17.3850,78.4867),'Pune': (18.5204,73.8567),
-        'Chennai': (13.0827,80.2707),'Kolkata': (22.5726,88.3639),
-        'Bhubaneswar': (20.2961,85.8245)
-    }
-
-    map_df = city.copy()
-    map_df['lat'] = map_df['city'].apply(lambda x: city_coords.get(x,(None,None))[0])
-    map_df['lon'] = map_df['city'].apply(lambda x: city_coords.get(x,(None,None))[1])
-    map_df = map_df.dropna()
-
-    st.plotly_chart(px.scatter_mapbox(
-        map_df, lat='lat', lon='lon', size='amount',
-        hover_name='city', zoom=4, mapbox_style='carto-positron'
-    ), use_container_width=True)
-
-    # Investors
-    top_inv = filtered_investor_df.groupby('investor_list')['amount'].sum().reset_index().sort_values(by='amount',ascending=False).head(10)
-    st.plotly_chart(px.bar(top_inv, x='investor_list', y='amount'), use_container_width=True)
-
 # ---------------------- STARTUP ----------------------
 def show_startup():
-    startup = st.selectbox("Select Startup", sorted(filtered_df['startup'].unique()))
+    startup = st.selectbox("Startup", sorted(filtered_df['startup'].unique()))
     data = filtered_df[filtered_df['startup']==startup]
 
     st.dataframe(data)
     yearly = data.groupby('year')['amount'].sum().reset_index()
-    st.plotly_chart(px.line(yearly, x='year', y='amount', markers=True), use_container_width=True)
+    st.plotly_chart(px.line(yearly, x='year', y='amount'), use_container_width=True)
 
 # ---------------------- INVESTOR ----------------------
 def show_investor():
-    investors = sorted([i for i in filtered_investor_df['investor_list'].dropna() if i!=""])
-    investor = st.selectbox("Select Investor", investors)
+    investors = sorted(set(filtered_investor_df['investor_list']))
+    investor = st.selectbox("Investor", investors)
 
     inv_df = filtered_investor_df[filtered_investor_df['investor_list']==investor]
 
     st.dataframe(inv_df.head())
 
-    top = inv_df.groupby('startup')['amount'].sum().reset_index().sort_values(by='amount',ascending=False).head(10)
+    top = inv_df.groupby('startup')['amount'].sum().reset_index()
     st.plotly_chart(px.bar(top, x='startup', y='amount'), use_container_width=True)
-
-    sector = inv_df.groupby('vertical')['amount'].sum().reset_index()
-    st.plotly_chart(px.pie(sector, values='amount', names='vertical'), use_container_width=True)
 
 # ---------------------- MAIN ----------------------
 if view == "Overview":
@@ -269,6 +283,5 @@ elif view == "Startup":
 else:
     show_investor()
 
-# ---------------------- FOOTER ----------------------
 st.markdown("---")
 st.markdown("<p style='text-align:center;'>Built by Aditya Kumar</p>", unsafe_allow_html=True)
