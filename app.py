@@ -1,117 +1,185 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
-st.set_page_config(layout='wide',page_title='StartUp Analysis')
+import plotly.express as px
 
-df = pd.read_csv('startup_cleaned.csv')
-df['date'] = pd.to_datetime(df['date'],errors='coerce')
-df['month'] = df['date'].dt.month
-df['year'] = df['date'].dt.year
+st.set_page_config(layout='wide', page_title='Startup Funding Dashboard')
 
-def load_overall_analysis():
-    st.title('Overall Analysis')
+# ---------------------- LOAD DATA ----------------------
+@st.cache_data
+def load_data():
+    df = pd.read_csv('startup_cleaned.csv')
 
-    # total invested amount
-    total = round(df['amount'].sum())
-    # max amount infused in a startup
-    max_funding = df.groupby('startup')['amount'].max().sort_values(ascending=False).head(1).values[0]
-    # avg ticket size
-    avg_funding = df.groupby('startup')['amount'].sum().mean()
-    # total funded startups
-    num_startups = df['startup'].nunique()
+    # Cleaning
+    df['date'] = pd.to_datetime(df['date'], errors='coerce')
+    df['year'] = df['date'].dt.year
+    df['month'] = df['date'].dt.month
+
+    df['amount'] = pd.to_numeric(df['amount'], errors='coerce')
+    df = df.dropna(subset=['amount'])
+
+    df['investors'] = df['investors'].fillna("")
+    df['investor_list'] = df['investors'].apply(lambda x: [i.strip() for i in x.split(',')])
+
+    return df
+
+df = load_data()
+
+# Exploded investor dataframe
+investor_df = df.explode('investor_list')
+
+# ---------------------- HELPER ----------------------
+def format_cr(x):
+    return f"₹{round(x,2)} Cr"
+
+# ---------------------- SIDEBAR ----------------------
+st.sidebar.title("🔍 Filters")
+
+year_filter = st.sidebar.multiselect("Year", sorted(df['year'].dropna().unique()))
+city_filter = st.sidebar.multiselect("City", sorted(df['city'].dropna().unique()))
+sector_filter = st.sidebar.multiselect("Sector", sorted(df['vertical'].dropna().unique()))
+
+view = st.sidebar.radio("Select View", ["Overview", "Startup", "Investor"])
+
+# Apply filters
+filtered_df = df.copy()
+
+if year_filter:
+    filtered_df = filtered_df[filtered_df['year'].isin(year_filter)]
+
+if city_filter:
+    filtered_df = filtered_df[filtered_df['city'].isin(city_filter)]
+
+if sector_filter:
+    filtered_df = filtered_df[filtered_df['vertical'].isin(sector_filter)]
+
+filtered_investor_df = filtered_df.explode('investor_list')
+
+# ---------------------- OVERVIEW ----------------------
+def show_overview():
+    st.title("📊 Indian Startup Funding Dashboard")
+
+    total = filtered_df['amount'].sum()
+    max_funding = filtered_df.groupby('startup')['amount'].max().max()
+    avg_funding = filtered_df.groupby('startup')['amount'].sum().mean()
+    startups = filtered_df['startup'].nunique()
 
     col1, col2, col3, col4 = st.columns(4)
 
-    with col1:
-        st.metric('Total', str(total) + ' Cr')
-    with col2:
-        st.metric('Max', str(max_funding) + ' Cr')
+    col1.metric("Total Funding", format_cr(total))
+    col2.metric("Max Funding", format_cr(max_funding))
+    col3.metric("Avg Funding", format_cr(avg_funding))
+    col4.metric("Startups", startups)
 
-    with col3:
-        st.metric('Avg', str(round(avg_funding)) + ' Cr')
+    st.divider()
 
-    with col4:
-        st.metric('Funded Startups', num_startups)
+    tab1, tab2, tab3 = st.tabs(["📈 Trends", "🏭 Sectors", "🏙️ Cities"])
 
-    st.header('MoM graph')
-    selected_option = st.selectbox('Select Type', ['Total', 'Count'])
-    if selected_option == 'Total':
-        temp_df = df.groupby(['year', 'month'])['amount'].sum().reset_index()
-    else:
-        temp_df = df.groupby(['year', 'month'])['amount'].count().reset_index()
+    # -------- Trends --------
+    with tab1:
+        trend = filtered_df.groupby(['year', 'month'])['amount'].sum().reset_index()
+        trend['date'] = pd.to_datetime(trend[['year','month']].assign(day=1))
 
-    temp_df['x_axis'] = temp_df['month'].astype('str') + '-' + temp_df['year'].astype('str')
+        fig = px.line(trend, x='date', y='amount', markers=True, title="Funding Trend")
+        st.plotly_chart(fig, use_container_width=True)
 
-    fig3, ax3 = plt.subplots()
-    ax3.plot(temp_df['x_axis'], temp_df['amount'])
+    # -------- Sector --------
+    with tab2:
+        sector = filtered_df.groupby('vertical')['amount'].sum().sort_values(ascending=False).head(10)
 
-    st.pyplot(fig3)
+        fig = px.bar(
+            x=sector.index,
+            y=sector.values,
+            color=sector.index,
+            title="Top Sectors"
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+    # -------- City --------
+    with tab3:
+        city = filtered_df.groupby('city')['amount'].sum().sort_values(ascending=False).head(10)
+
+        fig = px.bar(
+            x=city.index,
+            y=city.values,
+            color=city.index,
+            title="Top Cities"
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+    st.divider()
+
+    # -------- Investor Panel --------
+    st.subheader("🏆 Top Investors")
+
+    top_inv = filtered_investor_df.groupby('investor_list')['amount'].sum().sort_values(ascending=False).head(10)
+
+    fig = px.bar(x=top_inv.index, y=top_inv.values)
+    st.plotly_chart(fig, use_container_width=True)
+
+    st.divider()
+
+    # -------- Insights --------
+    st.subheader("🧠 Key Insights")
+
+    top_sector = filtered_df.groupby('vertical')['amount'].sum().idxmax()
+    top_city = filtered_df.groupby('city')['amount'].sum().idxmax()
+    top_investor = filtered_investor_df.groupby('investor_list')['amount'].sum().idxmax()
+
+    st.write(f"📊 Top sector: **{top_sector}**")
+    st.write(f"🏙️ Top city: **{top_city}**")
+    st.write(f"💰 Most active investor: **{top_investor}**")
 
 
-def load_investor_details(investor):
-    st.title(investor)
-    # load the recent 5 investments of the investor
-    last5_df = df[df['investors'].str.contains(investor)].head()[
-        ['date', 'startup', 'vertical', 'city', 'round', 'amount']]
-    st.subheader('Most Recent Investments')
-    st.dataframe(last5_df)
+# ---------------------- STARTUP ----------------------
+def show_startup():
+    st.title("🏢 Startup Analysis")
+
+    startup = st.selectbox("Select Startup", sorted(filtered_df['startup'].unique()))
+
+    startup_df = filtered_df[filtered_df['startup'] == startup]
+
+    st.subheader("Funding History")
+    st.dataframe(startup_df)
+
+    yearly = startup_df.groupby('year')['amount'].sum().reset_index()
+
+    fig = px.line(yearly, x='year', y='amount', markers=True, title="Yearly Funding")
+    st.plotly_chart(fig, use_container_width=True)
+
+
+# ---------------------- INVESTOR ----------------------
+def show_investor():
+    st.title("💰 Investor Analysis")
+
+    investors = sorted(set(filtered_investor_df['investor_list'].dropna()))
+    investor = st.selectbox("Select Investor", investors)
+
+    inv_df = filtered_investor_df[filtered_investor_df['investor_list'] == investor]
+
+    st.subheader("Recent Investments")
+    st.dataframe(inv_df[['date','startup','vertical','city','amount']].head())
 
     col1, col2 = st.columns(2)
+
     with col1:
-        # biggest investments
-        big_series = df[df['investors'].str.contains(investor)].groupby('startup')['amount'].sum().sort_values(
-            ascending=False).head()
-        st.subheader('Biggest Investments')
-        fig, ax = plt.subplots()
-        ax.bar(big_series.index, big_series.values)
-
-        st.pyplot(fig)
-
+        top = inv_df.groupby('startup')['amount'].sum().sort_values(ascending=False).head(10)
+        fig = px.bar(x=top.index, y=top.values, title="Top Investments")
+        st.plotly_chart(fig, use_container_width=True)
 
     with col2:
-        verical_series = df[df['investors'].str.contains(investor)].groupby('vertical')['amount'].sum()
+        sector = inv_df.groupby('vertical')['amount'].sum()
+        fig2 = px.pie(values=sector.values, names=sector.index, title="Sector Distribution")
+        st.plotly_chart(fig2)
 
-        st.subheader('Sectors invested in')
-        fig1, ax1 = plt.subplots()
-        ax1.pie(verical_series,labels=verical_series.index,autopct="%0.01f%%")
-
-        st.pyplot(fig1)
-
-    col3, col4 = st.columns(2)
-    with col3:
-       stage_series = df[df['investors'].str.contains(investor)].groupby('vertical')['amount'].sum()
-       st.subheader('Stage invested')
-       fig2, ax2 = plt.subplots()
-       ax2.pie(stage_series,labels=stage_series.index,autopct="%0.01f%%")
-       st.pyplot(fig2)
-
-    with col4:
-        city_series = df[df['investors'].str.contains(investor)].groupby('city')['amount'].sum()
-        st.subheader('City invested')
-        fig3, ax3 = plt.subplots()
-        ax3.pie(city_series,labels=city_series.index,autopct="%0.01f%%")
-        st.pyplot(fig3)
-
-    year_series = df[df['investors'].str.contains(investor)].groupby('year')['amount'].sum()
-
-    st.subheader('YoY Investment')
-    fig2, ax2 = plt.subplots()
-    ax2.plot(year_series.index, year_series.values)
-
-    st.pyplot(fig2)
-st.sidebar.title('Startup Funding Analysis')
-option = st.sidebar.selectbox('select one',['overall Analysis','Startup','Investor'])
+    yearly = inv_df.groupby('year')['amount'].sum().reset_index()
+    fig3 = px.line(yearly, x='year', y='amount', markers=True, title="Yearly Investment Trend")
+    st.plotly_chart(fig3, use_container_width=True)
 
 
-if option == 'overall Analysis':
-    load_overall_analysis()
-elif option == 'Startup':
-
-    st.sidebar.selectbox('select Startup',sorted(df['startup'].unique().tolist()))
-    btn1 = st.sidebar.button('Get Startup')
-    st.title('Startup Analysis')
+# ---------------------- MAIN ----------------------
+if view == "Overview":
+    show_overview()
+elif view == "Startup":
+    show_startup()
 else:
-    selected_investor = st.sidebar.selectbox('select Investor',sorted(set(df['investors'].str.split(',').sum())))
-    btn2 = st.sidebar.button('Get Investors')
-    if btn2:
-        load_investor_details(selected_investor)
+    show_investor()
