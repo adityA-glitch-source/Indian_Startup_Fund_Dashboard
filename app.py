@@ -9,6 +9,15 @@ st.set_page_config(layout='wide', page_title='Indian Startup Funding Dashboard')
 def normalize_text(x):
     x = str(x).lower()
     x = re.sub(r'[^a-z0-9\s]', '', x)
+
+    noise_words = [
+        'partners','capital','ventures','investments',
+        'fund','technology','opportunities','others','and'
+    ]
+
+    for word in noise_words:
+        x = x.replace(word, '')
+
     x = re.sub(r'\s+', ' ', x).strip()
     return x
 
@@ -62,15 +71,16 @@ def load_data():
     df['vertical'] = df['vertical'].apply(normalize_text)
 
     sector_map = {
-        'fintech': 'FinTech','finance': 'FinTech','financial services': 'FinTech',
+        'fintech': 'FinTech','finance': 'FinTech',
         'edtech': 'EdTech','education': 'EdTech',
-        'ecommerce': 'E-commerce','e commerce': 'E-commerce',
-        'healthtech': 'HealthTech','healthcare': 'HealthTech',
-        'ai': 'AI','machine learning': 'AI',
-        'saas': 'SaaS','software': 'SaaS',
+        'ecommerce': 'E-commerce',
+        'healthtech': 'HealthTech',
+        'ai': 'AI',
+        'saas': 'SaaS',
         'logistics': 'Logistics',
         'food': 'Food',
-        'gaming': 'Gaming','agritech': 'AgriTech'
+        'gaming': 'Gaming',
+        'agritech': 'AgriTech'
     }
 
     df['vertical'] = df['vertical'].replace(sector_map)
@@ -86,9 +96,7 @@ def load_data():
         'ola': 'Ola',
         'ola cabs': 'Ola',
         'flipkart': 'Flipkart',
-        'flipkart online': 'Flipkart',
         'paytm': 'Paytm',
-        'paytm payments': 'Paytm',
         'byju': 'Byju’s',
         'byjus': 'Byju’s'
     }
@@ -101,7 +109,7 @@ def load_data():
 
     df['startup'] = df['startup'].apply(clean_startup)
 
-    # -------- INVESTOR CLEANING --------
+    # -------- INVESTOR CLEANING (FINAL) --------
     df['investors'] = df['investors'].fillna("")
 
     def clean_investors(x):
@@ -109,20 +117,33 @@ def load_data():
         cleaned = []
 
         for inv in investors:
-            inv = normalize_text(inv)
+            inv_clean = normalize_text(inv)
 
-            if 'sequoia' in inv:
+            # ---- ENTITY GROUPING ----
+            if '500 startups' in inv_clean:
+                cleaned.append('500 Startups')
+            elif '3one4' in inv_clean:
+                cleaned.append('3One4 Capital')
+            elif 'aarin' in inv_clean:
+                cleaned.append('Aarin Capital')
+            elif 'ah' in inv_clean:
+                cleaned.append('Ah Ventures')
+            elif 'sequoia' in inv_clean:
                 cleaned.append('Sequoia')
-            elif 'accel' in inv:
+            elif 'accel' in inv_clean:
                 cleaned.append('Accel')
-            elif 'softbank' in inv:
+            elif 'softbank' in inv_clean:
                 cleaned.append('SoftBank')
-            elif 'tiger global' in inv:
+            elif 'tiger global' in inv_clean:
                 cleaned.append('Tiger Global')
-            elif 'matrix' in inv:
+            elif 'matrix' in inv_clean:
                 cleaned.append('Matrix')
-            elif inv != "":
-                cleaned.append(inv.title())
+            elif 'zodius' in inv_clean:
+                cleaned.append('Zodius')
+            elif 'zishaan hayath' in inv_clean:
+                cleaned.append('Zishaan Hayath')
+            elif inv_clean != "":
+                cleaned.append(inv_clean.title())
 
         return list(set(cleaned))
 
@@ -212,7 +233,7 @@ def show_overview():
         hover_name='city', zoom=4, mapbox_style='carto-positron'
     ), use_container_width=True)
 
-    # Top Investors
+    # Investors
     top_inv = filtered_investor_df.groupby('investor_list')['amount'].sum().reset_index().sort_values(by='amount',ascending=False).head(10)
     st.plotly_chart(px.bar(top_inv, x='investor_list', y='amount'), use_container_width=True)
 
